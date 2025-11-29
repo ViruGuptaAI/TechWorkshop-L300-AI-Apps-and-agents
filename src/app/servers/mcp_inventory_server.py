@@ -7,10 +7,10 @@ from mcp.server.fastmcp import FastMCP
 
 env_path = Path(__file__).parent.parent.parent / '.env'
 if env_path.exists():
-    load_dotenv(dotenv_path=env_path, override=True)
+    load_dotenv(dotenv_path=env_path)
 else:
     # Try loading from current directory as fallback
-    load_dotenv(override=True)
+    load_dotenv()
 
 # Add src directory to Python path
 src_path = Path(__file__).parent.parent.parent

@@ -1,7 +1,7 @@
 import os
 from typing import Dict, Optional
 from dotenv import load_dotenv
-load_dotenv(override=True)
+load_dotenv()
 
 def load_env_vars() -> Dict[str, Optional[str]]:
     """Load environment variables and return as a dictionary."""
