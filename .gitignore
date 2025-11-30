@@ -55,5 +55,6 @@ out/
 *.azuredevops
 
 # Github
-# .github/
+.github/workflows/jekyll-gh-pages.yml
+
 parameters.json
