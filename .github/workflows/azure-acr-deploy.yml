@@ -1,0 +1,64 @@
+name: Build and Push to Azure Container Registry
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: ${{ secrets.ACR_LOGIN_SERVER }} # e.g., myregistry.azurecr.io
+  REPOSITORY: ${{ secrets.ACR_REPOSITORY }} # e.g., app or app/backend
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create temporary .env from secret
+        # This writes the ENV secret to a temporary .env file inside src/.
+        # It is NOT committed and will be deleted after the image is built.
+        run: |
+          if [ -z "${{ secrets.ENV }}" ]; then
+            echo "ENV secret is not set. Please add ENV secret in the repository settings." >&2
+            exit 1
+          fi
+          printf "%s" "${{ secrets.ENV }}" > src/.env
+
+      - name: Log in to Azure Container Registry
+        # Requires repository secrets:
+        # - ACR_LOGIN_SERVER (e.g., myregistry.azurecr.io)
+        # - ACR_USERNAME
+        # - ACR_PASSWORD
+        run: |
+          echo "${{ secrets.ACR_PASSWORD }}" | docker login ${{ env.REGISTRY }} -u "${{ secrets.ACR_USERNAME }}" --password-stdin
+
+      - name: Build Docker image (src only)
+        # Build context restricted to src/ and use Dockerfile in src/
+        run: |
+          docker build \
+            -f src/Dockerfile \
+            -t ${{ env.REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }} \
+            src
+
+      - name: Push image
+        run: |
+          docker push ${{ env.REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
+
+      - name: Optionally tag 'latest'
+        if: ${{ github.ref == 'refs/heads/main' }}
+        run: |
+          docker tag ${{ env.REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }} ${{ env.REGISTRY }}/${{ env.REPOSITORY }}:latest
+          docker push ${{ env.REGISTRY }}/${{ env.REPOSITORY }}:latest
+
+      - name: Clean up temporary .env
+        if: always()
+        run: |
+          rm -f src/.env
